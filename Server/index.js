@@ -6,12 +6,29 @@ const PORT = 3000;
 
 const server = http.createServer((req, res) => {
   if (req.url === "/") {
-    fs.readFile(path.join(__dirname, "..", "Menu", "index.html"), (err, data) => {
+    fs.readFile(
+      path.join(__dirname, "..", "Menu", "index.html"),
+      (err, data) => {
+        if (err) {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Internal Server Error");
+        } else {
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(data);
+        }
+      },
+    );
+  } else if (req.url === "/validateUserId") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("true");
+  } else if (req.url === "/menu") {
+    fs.readFile(path.join(__dirname, "..", "Menu", "main.lua"), (err, data) => {
       if (err) {
+        console.error("Error reading main.lua:", err);
         res.writeHead(500, { "Content-Type": "text/plain" });
         res.end("Internal Server Error");
       } else {
-        res.writeHead(200, { "Content-Type": "text/html" });
+        res.writeHead(200, { "Content-Type": "text/plain" });
         res.end(data);
       }
     });

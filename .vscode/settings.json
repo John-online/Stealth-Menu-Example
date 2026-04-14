@@ -5,6 +5,7 @@
         "VK_UP",
         "VK_DOWN",
         "VK_LEFT",
-        "VK_RIGHT"
+        "VK_RIGHT",
+        "VK_F3"
     ]
 }

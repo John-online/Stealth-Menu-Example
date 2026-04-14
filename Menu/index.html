@@ -1,10 +1,583 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body>
-    
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      :root {
+        --bg-main: rgba(8, 15, 25, 0.92);
+        --bg-soft: rgba(13, 24, 39, 0.9);
+        --line: rgba(124, 211, 255, 0.42);
+        --line-soft: rgba(124, 211, 255, 0.16);
+        --text: #d7e8f7;
+        --text-dim: #9cb4c8;
+        --active-bg: linear-gradient(90deg, rgba(11, 59, 94, 0.98), rgba(14, 84, 124, 0.95));
+        --active-text: #f2fbff;
+        --glow: rgba(91, 205, 255, 0.35);
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        font-family: "Bahnschrift", "Trebuchet MS", sans-serif;
+      }
+
+      .menu {
+        position: absolute;
+        top: 9%;
+        left: 4.5%;
+        width: 412px;
+        height: 612px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background:
+          radial-gradient(140% 100% at 0% 0%, rgba(76, 180, 255, 0.09) 0%, rgba(76, 180, 255, 0) 55%),
+          linear-gradient(170deg, rgba(10, 19, 32, 0.97), rgba(6, 12, 22, 0.96));
+        box-shadow:
+          0 14px 38px rgba(0, 0, 0, 0.52),
+          0 0 0 1px rgba(180, 230, 255, 0.08) inset,
+          0 0 22px var(--glow);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .menu::before,
+      .menu::after {
+        content: "";
+        position: absolute;
+        pointer-events: none;
+      }
+
+      .menu::before {
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(170, 233, 255, 0.75), rgba(255, 255, 255, 0));
+      }
+
+      .menu::after {
+        bottom: 0;
+        right: 0;
+        width: 96px;
+        height: 96px;
+        background: radial-gradient(circle at 100% 100%, rgba(95, 205, 255, 0.22), rgba(95, 205, 255, 0));
+      }
+
+      .menu-header {
+        padding: 14px 16px;
+        text-align: left;
+        text-transform: uppercase;
+        letter-spacing: 1.8px;
+        background:
+          linear-gradient(90deg, rgba(19, 45, 67, 0.95), rgba(11, 29, 47, 0.94));
+        border-bottom: 1px solid var(--line);
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--active-text);
+        text-shadow: 0 0 10px rgba(124, 224, 255, 0.45);
+      }
+
+      .menu-list {
+        list-style: none;
+        flex: 1;
+        overflow: hidden;
+        padding: 8px 8px 4px;
+        background:
+          linear-gradient(180deg, rgba(18, 33, 51, 0.34), rgba(12, 23, 38, 0.18));
+      }
+
+      .menu-list.slide-out { animation: slideOut 0.14s ease forwards; }
+      .menu-list.slide-in  { animation: slideIn 0.18s ease forwards; }
+
+      .menu-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 6px;
+        padding: 13px 14px;
+        border: 1px solid var(--line-soft);
+        border-radius: 4px;
+        background:
+          linear-gradient(90deg, rgba(19, 29, 43, 0.96), rgba(16, 26, 40, 0.96));
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 0.25px;
+        color: var(--text);
+        transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+      }
+
+      .menu-item.active {
+        transform: translateX(3px);
+        border-color: rgba(152, 223, 255, 0.65);
+        background: var(--active-bg);
+        color: var(--active-text);
+        text-shadow: 0 0 8px rgba(163, 232, 255, 0.35);
+        box-shadow: 0 0 18px rgba(78, 184, 255, 0.22);
+      }
+
+      .item-title {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .item-meta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 72px;
+        color: var(--text-dim);
+        font-size: 14px;
+        letter-spacing: 0.2px;
+      }
+
+      .menu-item.active .item-meta {
+        color: #cfefff;
+      }
+
+      .item-meta.option {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-width: 140px;
+        font-weight: 700;
+        letter-spacing: 0.45px;
+      }
+
+      .item-meta.option .option-arrow {
+        color: #bde9ff;
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      .item-meta.option.fx .option-arrow {
+        animation: optionArrowPulse 0.24s ease;
+      }
+
+      .item-meta.option .option-value {
+        min-width: 70px;
+        text-align: center;
+      }
+
+      .item-meta.option.fx .option-value {
+        animation: optionValuePop 0.24s ease;
+      }
+
+      .item-meta.slider {
+        min-width: 64px;
+        font-weight: 700;
+      }
+
+      .item-meta.switch {
+        min-width: 54px;
+        height: 24px;
+        padding: 2px;
+        border: 1px solid rgba(160, 208, 230, 0.38);
+        border-radius: 999px;
+        background: rgba(10, 19, 31, 0.78);
+      }
+
+      .item-meta.switch::after {
+        content: "";
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: linear-gradient(180deg, #b4d0df, #8ea7b7);
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+        transform: translateX(-13px);
+        transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+      }
+
+      .item-meta.switch.on {
+        border-color: rgba(152, 231, 255, 0.62);
+        background: linear-gradient(90deg, rgba(19, 82, 124, 0.9), rgba(25, 121, 171, 0.86));
+      }
+
+      .item-meta.switch.on::after {
+        transform: translateX(13px);
+        background: linear-gradient(180deg, #ecfbff, #b8edf9);
+        box-shadow: 0 0 8px rgba(130, 223, 255, 0.45);
+      }
+
+      .item-meta.switch.fx {
+        animation: switchTrackPulse 0.2s ease;
+      }
+
+      .item-meta.switch.fx.on::after {
+        animation: switchKnobOn 0.2s ease;
+      }
+
+      .item-meta.switch.fx.off::after {
+        animation: switchKnobOff 0.2s ease;
+      }
+
+      .item-meta.page {
+        min-width: 24px;
+        font-size: 15px;
+      }
+
+      .menu-item .arrow {
+        color: var(--text-dim);
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      .menu-item.active .arrow {
+        color: #c8f0ff;
+      }
+
+      .menu-footer {
+        padding: 9px 14px;
+        border-top: 1px solid var(--line);
+        background: linear-gradient(90deg, rgba(16, 38, 58, 0.94), rgba(10, 26, 42, 0.94));
+        color: #c6dbea;
+        font-size: 13px;
+        letter-spacing: 0.35px;
+      }
+
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to   { transform: translateX(-18px); opacity: 0; }
+      }
+      @keyframes slideIn {
+        from { transform: translateX(18px); opacity: 0; }
+        to   { transform: translateX(0); opacity: 1; }
+      }
+
+      @keyframes switchTrackPulse {
+        0%   { box-shadow: 0 0 0 rgba(120, 215, 255, 0); }
+        50%  { box-shadow: 0 0 9px rgba(120, 215, 255, 0.38); }
+        100% { box-shadow: 0 0 0 rgba(120, 215, 255, 0); }
+      }
+
+      @keyframes switchKnobOn {
+        0%   { transform: translateX(-13px) scale(0.96); }
+        70%  { transform: translateX(15px) scale(1.05); }
+        100% { transform: translateX(13px) scale(1); }
+      }
+
+      @keyframes switchKnobOff {
+        0%   { transform: translateX(13px) scale(0.96); }
+        70%  { transform: translateX(-15px) scale(1.05); }
+        100% { transform: translateX(-13px) scale(1); }
+      }
+
+      @keyframes optionArrowPulse {
+        0%   { transform: scale(1); opacity: 0.75; }
+        50%  { transform: scale(1.18); opacity: 1; }
+        100% { transform: scale(1); opacity: 0.85; }
+      }
+
+      @keyframes optionValuePop {
+        0%   { transform: translateY(1px) scale(0.98); opacity: 0.72; }
+        50%  { transform: translateY(-1px) scale(1.04); opacity: 1; }
+        100% { transform: translateY(0) scale(1); opacity: 1; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="menu">
+      <div class="menu-header" id="menu-title"></div>
+      <ul class="menu-list" id="menu-list"></ul>
+      <div class="menu-footer" id="footer-text"></div>
+    </div>
+
+    <script>
+      // -- Config --
+      const Mod = {
+        Title: "Neuro",
+        Footer: "Made by Project Stealth",
+        CurrentPage: "main",
+        Pages: [
+          {
+            page_id: "player",
+            title: "Self",
+            items: [
+              { item_id: "godmode",         title: "Godmode",         type: "checkbox" },
+              { item_id: "infinite_stamina", title: "Infinite Stamina", type: "checkbox" },
+              { item_id: "run_speed",        title: "Run Speed",       type: "slider",  min: 1, max: 10, step: 1, value: 5 },
+              { item_id: "movement_mode",    title: "Movement Mode",   type: "option",  options: ["Normal", "Aggressive", "Stealth"], default_index: 0 },
+              { item_id: "heal_player",      title: "Heal Player",     type: "button" }
+            ]
+          },
+          {
+            page_id: "server",
+            title: "Server",
+            items: [
+              { item_id: "weather_sync", title: "Weather Sync", type: "checkbox" }
+            ]
+          },
+          {
+            page_id: "weapon",
+            title: "Weapons",
+            items: [
+              { item_id: "no_recoil", title: "No Recoil", type: "checkbox" }
+            ]
+          }
+        ]
+      };
+
+      // -- State --
+      const UI = {
+        selectedByPage: {},
+        pageStack: [],
+        toggles: {},
+        sliderValues: {},
+        optionIndices: {},
+        fx: {
+          checkboxId: null,
+          optionId: null
+        },
+        transitioning: false
+      };
+
+      // -- Helpers --
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const wrapIndex = (index, length) => {
+        if (length <= 0) return 0;
+        return ((index % length) + length) % length;
+      };
+
+      const pageById = (id) => {
+        if (id === "main") return { page_id: "main", title: Mod.Title, items: Mod.Pages };
+        return Mod.Pages.find((p) => p.page_id === id) || null;
+      };
+
+      const currentPage = () => pageById(Mod.CurrentPage);
+
+      const currentEntries = () => {
+        const page = currentPage();
+        if (!page) return [];
+        if (page.page_id === "main") {
+          return page.items.map((p) => ({ kind: "page", id: p.page_id, title: p.title }));
+        }
+        return page.items.map((e) => ({ kind: e.type, id: e.item_id, title: e.title, ...e }));
+      };
+
+      const itemConfigById = (id) => {
+        const page = currentPage();
+        if (!page || page.page_id === "main") return null;
+        return page.items.find((e) => e.item_id === id) || null;
+      };
+
+      const sliderValue = (entry) => {
+        const min = entry.min ?? 0;
+        const max = entry.max ?? 100;
+        const stored = UI.sliderValues[entry.id ?? entry.item_id];
+        return clamp(Number.isFinite(stored) ? stored : (entry.value ?? min), min, max);
+      };
+
+      const optionIndex = (entry) => {
+        const options = entry.options || [];
+        const stored = UI.optionIndices[entry.id ?? entry.item_id];
+        const idx = Number.isInteger(stored) ? stored : (entry.default_index ?? 0);
+        return clamp(idx, 0, Math.max(0, options.length - 1));
+      };
+
+      // -- Rendering --
+      const refs = {};
+
+      const renderList = () => {
+        const page = currentPage();
+        const entries = currentEntries();
+
+        refs.list.innerHTML = "";
+        entries.forEach((entry) => {
+          const li = document.createElement("li");
+          li.className = "menu-item";
+          li.dataset.kind = entry.kind;
+          li.dataset.id = entry.id;
+
+          let meta = "";
+          if (entry.kind === "page") {
+            meta = '<span class="item-meta page">➜</span>';
+          } else if (entry.kind === "checkbox") {
+            const isOn = Boolean(UI.toggles[entry.id]);
+            const fxClass = UI.fx.checkboxId === entry.id ? " fx" : "";
+            meta = `<span class="item-meta switch ${isOn ? "on" : "off"}${fxClass}"></span>`;
+          } else if (entry.kind === "slider") {
+            meta = `<span class="item-meta slider">[${sliderValue(entry)}]</span>`;
+          } else if (entry.kind === "option") {
+            const value = (entry.options || [])[optionIndex(entry)] ?? "N/A";
+            const fxClass = UI.fx.optionId === entry.id ? " fx" : "";
+            meta = `<span class="item-meta option${fxClass}"><span class="option-arrow">◀</span><span class="option-value">${value}</span><span class="option-arrow">▶</span></span>`;
+          }
+
+          li.innerHTML = `<span class="item-title">${entry.title}</span>${meta}`;
+          refs.list.appendChild(li);
+        });
+
+        refs.title.textContent  = page.page_id === "main" ? Mod.Title : `${Mod.Title} | ${page.title}`;
+        refs.footer.textContent = page.page_id === "main" ? Mod.Footer : `${Mod.Footer} | ${page.title}`;
+
+        const savedIndex = UI.selectedByPage[page.page_id] ?? 0;
+        setActiveByIndex(savedIndex);
+
+        UI.fx.checkboxId = null;
+        UI.fx.optionId = null;
+      };
+
+      const setActiveByIndex = (index) => {
+        const items = refs.list.querySelectorAll(".menu-item");
+        if (!items.length) return;
+        const i = wrapIndex(index, items.length);
+        UI.selectedByPage[Mod.CurrentPage] = i;
+        items.forEach((item, idx) => item.classList.toggle("active", idx === i));
+      };
+
+      const activeItem = () => refs.list.querySelector(".menu-item.active");
+
+      // -- Navigation --
+      const transitionTo = (nextId, direction) => {
+        if (UI.transitioning || Mod.CurrentPage === nextId || !pageById(nextId)) return;
+        UI.transitioning = true;
+
+        refs.list.classList.add("slide-out");
+        setTimeout(() => {
+          Mod.CurrentPage = nextId;
+          refs.list.classList.remove("slide-out");
+          renderList();
+          refs.list.classList.add("slide-in");
+          setTimeout(() => {
+            refs.list.classList.remove("slide-in");
+            UI.transitioning = false;
+          }, 210);
+        }, 165);
+      };
+
+      const goToPage = (pageId) => {
+        UI.pageStack.push(Mod.CurrentPage);
+        transitionTo(pageId, "forward");
+      };
+
+      const goBack = () => {
+        if (UI.transitioning) return;
+        const prev = UI.pageStack.pop() || "main";
+        transitionTo(prev, "back");
+      };
+
+      // -- Input --
+      const selectedContext = () => {
+        const el = activeItem();
+        if (!el) return { page_id: Mod.CurrentPage, selected_index: UI.selectedByPage[Mod.CurrentPage] ?? 0, item: null };
+
+        const kind = el.dataset.kind;
+        const id   = el.dataset.id;
+        const label = el.querySelector(".item-title")?.textContent || "";
+        const item  = { kind, item_id: id, label };
+
+        if (kind === "checkbox") item.value = Boolean(UI.toggles[id]);
+        if (kind === "slider") {
+          const cfg = itemConfigById(id) || {};
+          item.value = sliderValue({ ...cfg, id });
+          item.min = cfg.min ?? 0; item.max = cfg.max ?? 100; item.step = cfg.step ?? 1;
+        }
+        if (kind === "option") {
+          const cfg = itemConfigById(id) || {};
+          const options = cfg.options || [];
+          const idx = optionIndex({ ...cfg, id });
+          item.index = idx; item.options = options; item.value = options[idx] ?? null;
+        }
+
+        return { page_id: Mod.CurrentPage, selected_index: UI.selectedByPage[Mod.CurrentPage] ?? 0, item };
+      };
+
+      const handleInput = (input) => {
+        if (UI.transitioning) return { action: "blocked", reason: "transition", context: selectedContext() };
+
+        if (input === "up")   { setActiveByIndex((UI.selectedByPage[Mod.CurrentPage] ?? 0) - 1); return { action: "navigate", direction: "up",   context: selectedContext() }; }
+        if (input === "down") { setActiveByIndex((UI.selectedByPage[Mod.CurrentPage] ?? 0) + 1); return { action: "navigate", direction: "down", context: selectedContext() }; }
+
+        if (input === "left" || input === "right") {
+          const delta = input === "right" ? 1 : -1;
+          const el = activeItem();
+          if (!el) return selectedContext();
+          const kind = el.dataset.kind;
+          const id   = el.dataset.id;
+
+          if (kind === "slider") {
+            const cfg = itemConfigById(id);
+            if (!cfg) return selectedContext();
+            const min = cfg.min ?? 0, max = cfg.max ?? 100, step = cfg.step ?? 1;
+            const next = clamp(sliderValue({ ...cfg, id }) + step * delta, min, max);
+            UI.sliderValues[id] = next;
+            renderList();
+            return { action: "adjust", item_type: "slider", item_id: id, value: next, page_id: Mod.CurrentPage, context: selectedContext() };
+          }
+
+          if (kind === "option") {
+            const cfg = itemConfigById(id);
+            if (!cfg || !cfg.options?.length) return selectedContext();
+            const next = (optionIndex({ ...cfg, id }) + delta + cfg.options.length) % cfg.options.length;
+            UI.optionIndices[id] = next;
+            UI.fx.optionId = id;
+            renderList();
+            return { action: "adjust", item_type: "option", item_id: id, index: next, value: cfg.options[next], page_id: Mod.CurrentPage, context: selectedContext() };
+          }
+
+          return selectedContext();
+        }
+
+        if (input === "enter") {
+          const el = activeItem();
+          if (!el) return selectedContext();
+          const kind = el.dataset.kind;
+          const id   = el.dataset.id;
+
+          if (kind === "page")     { goToPage(id); return { action: "open_page", page_id: id, context: selectedContext() }; }
+          if (kind === "checkbox") { UI.toggles[id] = !UI.toggles[id]; UI.fx.checkboxId = id; renderList(); return { action: "toggle", item_type: "checkbox", item_id: id, value: UI.toggles[id], page_id: Mod.CurrentPage, context: selectedContext() }; }
+          if (kind === "button")   { return { action: "press",   item_type: "button",  item_id: id, page_id: Mod.CurrentPage, context: selectedContext() }; }
+          if (kind === "slider")   { return { action: "confirm", item_type: "slider",  item_id: id, value: sliderValue({ ...itemConfigById(id), id }), page_id: Mod.CurrentPage, context: selectedContext() }; }
+          if (kind === "option")   { const cfg = itemConfigById(id) || {}; const idx = optionIndex({ ...cfg, id }); return { action: "confirm", item_type: "option", item_id: id, index: idx, value: (cfg.options || [])[idx] ?? null, page_id: Mod.CurrentPage, context: selectedContext() }; }
+        }
+
+        if (input === "back") {
+          const from = Mod.CurrentPage;
+          if (from === "main") {
+            return { action: "close_menu", from_page: from, to_page: from, context: selectedContext() };
+          }
+          goBack();
+          return { action: "back", from_page: from, to_page: Mod.CurrentPage, context: selectedContext() };
+        }
+
+        return { action: "noop", context: selectedContext() };
+      };
+
+      // -- Stealth Bridge --
+      window.StealthMenuHelper = {
+        input: handleInput,
+        state: selectedContext
+      };
+
+      // -- postMessage API --
+      window.addEventListener("message", (event) => {
+        let data = event.data;
+        if (typeof data === "string") { try { data = JSON.parse(data); } catch { return; } }
+        if (typeof data !== "object" || !data) return;
+
+        if (data.action === "openPage"   && data.page_id)  { UI.pageStack.push(Mod.CurrentPage); transitionTo(data.page_id, "forward"); }
+        if (data.action === "goBack")                      { goBack(); }
+        if (data.action === "setToggle"  && data.item_id)  { UI.toggles[data.item_id] = Boolean(data.value); UI.fx.checkboxId = data.item_id; renderList(); }
+        if (data.action === "setSlider"  && data.item_id)  { const v = Number(data.value); if (Number.isFinite(v)) { UI.sliderValues[data.item_id] = v; renderList(); } }
+        if (data.action === "setOption"  && data.item_id)  { const i = Number(data.index);  if (Number.isInteger(i)) { UI.optionIndices[data.item_id] = i; UI.fx.optionId = data.item_id; renderList(); } }
+        if (data.action === "setTitle"   && data.title)    { Mod.Title = data.title; renderList(); }
+      });
+
+      // -- Init --
+      document.addEventListener("DOMContentLoaded", () => {
+        refs.list   = document.getElementById("menu-list");
+        refs.title  = document.getElementById("menu-title");
+        refs.footer = document.getElementById("footer-text");
+        renderList();
+      });
+    </script>
+  </body>
 </html>
