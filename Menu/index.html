@@ -172,8 +172,47 @@
       }
 
       .item-meta.slider {
-        min-width: 64px;
+        min-width: 168px;
+        gap: 10px;
+      }
+
+      .item-meta.slider .slider-track {
+        position: relative;
+        width: 96px;
+        height: 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(170, 226, 249, 0.35);
+        background: linear-gradient(90deg, rgba(12, 24, 36, 0.85), rgba(19, 34, 49, 0.85));
+        box-shadow: inset 0 0 6px rgba(5, 10, 18, 0.55);
+        overflow: hidden;
+      }
+
+      .item-meta.slider .slider-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, rgba(88, 198, 243, 0.9), rgba(138, 236, 255, 0.9));
+        box-shadow: 0 0 8px rgba(109, 222, 255, 0.35);
+      }
+
+      .item-meta.slider .slider-thumb {
+        position: absolute;
+        top: 50%;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 1px solid rgba(228, 250, 255, 0.85);
+        background: linear-gradient(180deg, #eefcff, #bfe9f7);
+        box-shadow: 0 0 8px rgba(126, 225, 255, 0.45);
+        transform: translate(-50%, -50%);
+      }
+
+      .item-meta.slider .slider-value {
+        min-width: 46px;
+        text-align: right;
         font-weight: 700;
+        letter-spacing: 0.35px;
       }
 
       .item-meta.switch {
@@ -321,6 +360,21 @@
             items: [
               { item_id: "no_recoil", title: "No Recoil", type: "checkbox" }
             ]
+          },
+          {
+            page_id: "visuals",
+            title: "Visuals",
+            items: [
+              { item_id: "simple_esp", title: "Simple ESP", type: "checkbox" }
+            ]
+          },
+          {
+            page_id: "players",
+            title: "Players",
+            items: [
+              { item_id: "nearby_distance", title: "Nearby Distance", type: "slider", min: 10, max: 500, step: 10, value: 120 },
+              { item_id: "refresh_nearby_players", title: "Refresh Nearby Players", type: "button" }
+            ]
           }
         ]
       };
@@ -332,6 +386,8 @@
         toggles: {},
         sliderValues: {},
         optionIndices: {},
+        nearbyPlayers: [],
+        playerActionTarget: null,
         fx: {
           checkboxId: null,
           optionId: null
@@ -348,6 +404,19 @@
 
       const pageById = (id) => {
         if (id === "main") return { page_id: "main", title: Mod.Title, items: Mod.Pages };
+        if (id === "player_actions") {
+          const target = UI.playerActionTarget || { server_id: 0, name: "Player" };
+          return {
+            page_id: "player_actions",
+            title: `Player | ${target.name}`,
+            items: [
+              { item_id: "player_action_view_info", title: "View Info", type: "player_action" },
+              { item_id: "player_action_spectate",  title: "Spectate",  type: "player_action" },
+              { item_id: "player_action_teleport",  title: "Teleport To", type: "player_action" },
+              { item_id: "player_action_bring",     title: "Bring Here",  type: "player_action" }
+            ]
+          };
+        }
         return Mod.Pages.find((p) => p.page_id === id) || null;
       };
 
@@ -359,7 +428,20 @@
         if (page.page_id === "main") {
           return page.items.map((p) => ({ kind: "page", id: p.page_id, title: p.title }));
         }
-        return page.items.map((e) => ({ kind: e.type, id: e.item_id, title: e.title, ...e }));
+
+        const baseEntries = page.items.map((e) => ({ kind: e.type, id: e.item_id, title: e.title, ...e }));
+        if (page.page_id !== "players") return baseEntries;
+
+        const nearbyEntries = UI.nearbyPlayers.map((p) => ({
+          kind: "player",
+          id: `nearby_player_${p.server_id}`,
+          title: `${p.name} (${p.distance}m)`,
+          target_server_id: p.server_id,
+          target_name: p.name,
+          target_distance: p.distance
+        }));
+
+        return [...baseEntries, ...nearbyEntries];
       };
 
       const itemConfigById = (id) => {
@@ -395,16 +477,25 @@
           li.className = "menu-item";
           li.dataset.kind = entry.kind;
           li.dataset.id = entry.id;
+          if (entry.target_server_id != null) li.dataset.targetServerId = String(entry.target_server_id);
+          if (entry.target_name != null) li.dataset.targetName = String(entry.target_name);
 
           let meta = "";
           if (entry.kind === "page") {
+            meta = '<span class="item-meta page">➜</span>';
+          } else if (entry.kind === "player") {
             meta = '<span class="item-meta page">➜</span>';
           } else if (entry.kind === "checkbox") {
             const isOn = Boolean(UI.toggles[entry.id]);
             const fxClass = UI.fx.checkboxId === entry.id ? " fx" : "";
             meta = `<span class="item-meta switch ${isOn ? "on" : "off"}${fxClass}"></span>`;
           } else if (entry.kind === "slider") {
-            meta = `<span class="item-meta slider">[${sliderValue(entry)}]</span>`;
+            const value = sliderValue(entry);
+            const min = entry.min ?? 0;
+            const max = entry.max ?? 100;
+            const ratio = max <= min ? 0 : (value - min) / (max - min);
+            const percent = clamp(ratio * 100, 0, 100);
+            meta = `<span class="item-meta slider"><span class="slider-track"><span class="slider-fill" style="width:${percent}%;"></span><span class="slider-thumb" style="left:${percent}%;"></span></span><span class="slider-value">${value}</span></span>`;
           } else if (entry.kind === "option") {
             const value = (entry.options || [])[optionIndex(entry)] ?? "N/A";
             const fxClass = UI.fx.optionId === entry.id ? " fx" : "";
@@ -474,6 +565,12 @@
         const label = el.querySelector(".item-title")?.textContent || "";
         const item  = { kind, item_id: id, label };
 
+        if (kind === "player" || kind === "player_action") {
+          const targetId = Number(el.dataset.targetServerId ?? UI.playerActionTarget?.server_id);
+          if (Number.isFinite(targetId)) item.target_server_id = targetId;
+          item.target_name = el.dataset.targetName || UI.playerActionTarget?.name || "";
+        }
+
         if (kind === "checkbox") item.value = Boolean(UI.toggles[id]);
         if (kind === "slider") {
           const cfg = itemConfigById(id) || {};
@@ -533,8 +630,20 @@
           const id   = el.dataset.id;
 
           if (kind === "page")     { goToPage(id); return { action: "open_page", page_id: id, context: selectedContext() }; }
+          if (kind === "player") {
+            const targetServerId = Number(el.dataset.targetServerId);
+            UI.playerActionTarget = {
+              server_id: Number.isFinite(targetServerId) ? targetServerId : 0,
+              name: el.dataset.targetName || "Player"
+            };
+            goToPage("player_actions");
+            return { action: "open_player_actions", item_type: "player", item_id: id, value: UI.playerActionTarget.server_id, page_id: Mod.CurrentPage, context: selectedContext() };
+          }
           if (kind === "checkbox") { UI.toggles[id] = !UI.toggles[id]; UI.fx.checkboxId = id; renderList(); return { action: "toggle", item_type: "checkbox", item_id: id, value: UI.toggles[id], page_id: Mod.CurrentPage, context: selectedContext() }; }
           if (kind === "button")   { return { action: "press",   item_type: "button",  item_id: id, page_id: Mod.CurrentPage, context: selectedContext() }; }
+          if (kind === "player_action") {
+            return { action: "press", item_type: "player_action", item_id: id, value: UI.playerActionTarget?.server_id || 0, page_id: Mod.CurrentPage, context: selectedContext() };
+          }
           if (kind === "slider")   { return { action: "confirm", item_type: "slider",  item_id: id, value: sliderValue({ ...itemConfigById(id), id }), page_id: Mod.CurrentPage, context: selectedContext() }; }
           if (kind === "option")   { const cfg = itemConfigById(id) || {}; const idx = optionIndex({ ...cfg, id }); return { action: "confirm", item_type: "option", item_id: id, index: idx, value: (cfg.options || [])[idx] ?? null, page_id: Mod.CurrentPage, context: selectedContext() }; }
         }
@@ -554,7 +663,34 @@
       // -- Stealth Bridge --
       window.StealthMenuHelper = {
         input: handleInput,
-        state: selectedContext
+        state: selectedContext,
+        setNearbyPlayers: (players) => {
+          if (!Array.isArray(players)) {
+            return { ok: false, reason: "players_not_array" };
+          }
+
+          UI.nearbyPlayers = players
+            .filter((p) => p && Number.isFinite(Number(p.server_id)) && Number.isFinite(Number(p.distance)))
+            .map((p) => ({
+              server_id: Number(p.server_id),
+              name: String(p.name || `Player ${p.server_id}`),
+              distance: Math.max(0, Math.floor(Number(p.distance)))
+            }));
+
+          if (Mod.CurrentPage === "players") renderList();
+          return { ok: true, count: UI.nearbyPlayers.length };
+        },
+        setNearbyDistance: (value) => {
+          const distance = Number(value);
+          if (!Number.isFinite(distance)) {
+            return { ok: false, reason: "invalid_distance" };
+          }
+
+          const clamped = clamp(Math.round(distance / 10) * 10, 10, 500);
+          UI.sliderValues.nearby_distance = clamped;
+          if (Mod.CurrentPage === "players") renderList();
+          return { ok: true, value: clamped };
+        }
       };
 
       // -- postMessage API --
