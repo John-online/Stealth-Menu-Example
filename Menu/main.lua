@@ -240,14 +240,36 @@ function Mod:DrawSimpleEspForPed(targetPed)
 end
 
 function Mod:DrawSimpleEsp()
-    if not self.simpleEsp then return end
+    self._espDebug = self._espDebug or {
+        endDrawCalls = 0,
+        lastEndDrawLogAt = 0,
+        wasEnabled = false
+    }
+
+    if not self.simpleEsp then
+        if self._espDebug.wasEnabled then
+            local ok, err = pcall(function()
+                Stealth.EndDraw()
+            end)
+            if ok then
+                self:Log("ESP disabled -> forced EndDraw cleanup")
+            else
+                self:Log("ESP disabled -> EndDraw cleanup failed: " .. tostring(err))
+            end
+            self._espDebug.wasEnabled = false
+        end
+        return
+    end
+
     if not Stealth.BeginDraw() then return end
+    self._espDebug.wasEnabled = true
 
-    repeat
-        local myPed = PlayerPedId()
-        if not DoesEntityExist(myPed) or IsEntityDead(myPed) then break end
-        if GetFollowPedCamViewMode() == 4 then break end
+    local myPed = PlayerPedId()
+    local canDraw = DoesEntityExist(myPed)
+        and not IsEntityDead(myPed)
+        and GetFollowPedCamViewMode() ~= 4
 
+    if canDraw then
         for _, player in ipairs(GetActivePlayers()) do
             if player ~= PlayerId() then
                 local targetPed = GetPlayerPed(player)
@@ -256,7 +278,14 @@ function Mod:DrawSimpleEsp()
                 end
             end
         end
-    until true
+    end
+
+    self._espDebug.endDrawCalls = self._espDebug.endDrawCalls + 1
+    local now = GetGameTimer()
+    if now - self._espDebug.lastEndDrawLogAt >= 1000 then
+        self:Log("EndDraw called (count=" .. tostring(self._espDebug.endDrawCalls) .. ")")
+        self._espDebug.lastEndDrawLogAt = now
+    end
 
     Stealth.EndDraw()
 end
